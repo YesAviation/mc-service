@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package stream.v1;
+
+import "common/v1/common.proto";
+
+service StreamService {
+  rpc GetStreamUrl(GetStreamUrlRequest) returns (StreamUrlResponse);
+  rpc GetManifest(GetManifestRequest) returns (ManifestResponse);
+  rpc GetSegment(GetSegmentRequest) returns (SegmentResponse);
+}
+
+message GetStreamUrlRequest {
+  string track_id = 1;
+  string user_id = 2;
+}
+
+message StreamUrlResponse {
+  string manifest_url = 1;
+  int64 expires_at = 2;
+}
+
+message GetManifestRequest {
+  string track_id = 1;
+  string signature = 2;
+}
+
+message ManifestResponse {
+  string content_type = 1;
+  bytes manifest_data = 2;
+}
+
+message GetSegmentRequest {
+  string track_id = 1;
+  string segment_id = 2;
+  string signature = 3;
+}
+
+message SegmentResponse {
+  string content_type = 1;
+  bytes segment_data = 2;
+}

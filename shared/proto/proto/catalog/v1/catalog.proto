@@ -1,0 +1,205 @@
+syntax = "proto3";
+
+package catalog.v1;
+
+import "common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service CatalogService {
+  // Tracks
+  rpc GetTrack(GetTrackRequest) returns (Track);
+  rpc ListTracks(ListTracksRequest) returns (ListTracksResponse);
+  rpc CreateTrack(CreateTrackRequest) returns (Track);
+  rpc UpdateTrack(UpdateTrackRequest) returns (Track);
+  rpc DeleteTrack(DeleteTrackRequest) returns (common.v1.Empty);
+
+  // Albums
+  rpc GetAlbum(GetAlbumRequest) returns (Album);
+  rpc ListAlbums(ListAlbumsRequest) returns (ListAlbumsResponse);
+  rpc CreateAlbum(CreateAlbumRequest) returns (Album);
+  rpc UpdateAlbum(UpdateAlbumRequest) returns (Album);
+  rpc DeleteAlbum(DeleteAlbumRequest) returns (common.v1.Empty);
+
+  // Artists
+  rpc GetArtist(GetArtistRequest) returns (Artist);
+  rpc ListArtists(ListArtistsRequest) returns (ListArtistsResponse);
+  rpc CreateArtist(CreateArtistRequest) returns (Artist);
+  rpc UpdateArtist(UpdateArtistRequest) returns (Artist);
+  rpc DeleteArtist(DeleteArtistRequest) returns (common.v1.Empty);
+}
+
+// --- Track ---
+
+message Track {
+  string id = 1;
+  string title = 2;
+  string artist_id = 3;
+  string album_id = 4;
+  int32 duration_secs = 5;
+  int32 track_number = 6;
+  int32 disc_number = 7;
+  string genre = 8;
+  int32 year = 9;
+  string file_hash = 10;
+  string storage_file_id = 11;
+  string metadata_json = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+  bool manually_edited = 15;
+}
+
+message GetTrackRequest {
+  string track_id = 1;
+}
+
+message ListTracksRequest {
+  common.v1.PaginationRequest pagination = 1;
+  optional string artist_id = 2;
+  optional string album_id = 3;
+  optional string genre = 4;
+}
+
+message ListTracksResponse {
+  repeated Track tracks = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message CreateTrackRequest {
+  string title = 1;
+  string artist_id = 2;
+  string album_id = 3;
+  int32 duration_secs = 4;
+  int32 track_number = 5;
+  int32 disc_number = 6;
+  string genre = 7;
+  int32 year = 8;
+  string file_hash = 9;
+  string storage_file_id = 10;
+  string metadata_json = 11;
+}
+
+message UpdateTrackRequest {
+  string track_id = 1;
+  optional string title = 2;
+  optional string artist_id = 3;
+  optional string album_id = 4;
+  optional int32 track_number = 5;
+  optional int32 disc_number = 6;
+  optional string genre = 7;
+  optional int32 year = 8;
+  optional string metadata_json = 9;
+  optional bool manually_edited = 10;
+}
+
+message DeleteTrackRequest {
+  string track_id = 1;
+}
+
+// --- Album ---
+
+message Album {
+  string id = 1;
+  string title = 2;
+  string artist_id = 3;
+  int32 year = 4;
+  string genre = 5;
+  string artwork_url = 6;
+  string metadata_json = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  bool manually_edited = 10;
+}
+
+message GetAlbumRequest {
+  string album_id = 1;
+}
+
+message ListAlbumsRequest {
+  common.v1.PaginationRequest pagination = 1;
+  optional string artist_id = 2;
+  optional string genre = 3;
+}
+
+message ListAlbumsResponse {
+  repeated Album albums = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message CreateAlbumRequest {
+  string title = 1;
+  string artist_id = 2;
+  int32 year = 3;
+  string genre = 4;
+  string artwork_url = 5;
+  string metadata_json = 6;
+}
+
+message UpdateAlbumRequest {
+  string album_id = 1;
+  optional string title = 2;
+  optional string artist_id = 3;
+  optional int32 year = 4;
+  optional string genre = 5;
+  optional string artwork_url = 6;
+  optional string metadata_json = 7;
+  optional bool manually_edited = 8;
+}
+
+message DeleteAlbumRequest {
+  string album_id = 1;
+}
+
+// --- Artist ---
+
+message Artist {
+  string id = 1;
+  string name = 2;
+  string bio = 3;
+  string image_url = 4;
+  string metadata_json = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  bool manually_edited = 8;
+  // ISO-8601 calendar date the act was formed (e.g. "2022-03-28"). Empty when unknown.
+  string formed_date = 9;
+  // Free-form origin country / region (e.g. "South Korea"). Empty when unknown.
+  string origin_country = 10;
+}
+
+message GetArtistRequest {
+  string artist_id = 1;
+}
+
+message ListArtistsRequest {
+  common.v1.PaginationRequest pagination = 1;
+}
+
+message ListArtistsResponse {
+  repeated Artist artists = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message CreateArtistRequest {
+  string name = 1;
+  string bio = 2;
+  string image_url = 3;
+  string metadata_json = 4;
+}
+
+message UpdateArtistRequest {
+  string artist_id = 1;
+  optional string name = 2;
+  optional string bio = 3;
+  optional string image_url = 4;
+  optional string metadata_json = 5;
+  optional string formed_date = 6;
+  optional string origin_country = 7;
+  // When true, marks the record as admin-curated and freezes future
+  // automated overwrites. When false (and the request was made by an admin),
+  // unfreezes so the next ingestion run can refresh missing fields.
+  optional bool manually_edited = 8;
+}
+
+message DeleteArtistRequest {
+  string artist_id = 1;
+}

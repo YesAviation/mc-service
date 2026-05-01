@@ -1,0 +1,13 @@
+{
+  "name": "music-web",
+  "private": true,
+  "scripts": {
+    "dev:player": "pnpm --filter @music/player dev",
+    "dev:admin": "pnpm --filter @music/admin dev",
+    "build:player": "pnpm --filter @music/player build",
+    "build:admin": "pnpm --filter @music/admin build",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

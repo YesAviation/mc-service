@@ -1,0 +1,15 @@
+target/
+.git/
+.gitignore
+**/node_modules/
+web/apps/**/dist/
+web/packages/**/dist/
+*.mp3
+*.flac
+*.wav
+*.m4a
+*.ogg
+*.aac
+*.ts
+*.m3u8
+*.zip

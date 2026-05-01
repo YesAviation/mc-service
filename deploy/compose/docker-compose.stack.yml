@@ -1,0 +1,396 @@
+name: music-stack
+
+# Start combined mode:
+#   docker compose -f deploy/compose/docker-compose.stack.yml --profile combined up -d
+# Start microservice mode:
+#   docker compose -f deploy/compose/docker-compose.stack.yml --profile micro up -d
+
+x-rust-env: &rust_env
+  DATABASE__URL: postgres://music:music@postgres:5432/music
+  REDIS__URL: redis://redis:6379
+  RABBITMQ__URL: amqp://guest:guest@rabbitmq:5672
+  STORAGE__BACKEND: local
+  STORAGE__LOCAL_PATH: /app/data/music
+  LOGGING__LEVEL: info
+  LOGGING__FORMAT: pretty
+  JWT__SECRET: ${JWT__SECRET:?JWT__SECRET must be set in deploy/compose/.env (min 32 bytes, not the sentinel)}
+  TRANSCODING__FFMPEG_PATH: ffmpeg
+  # Comma-separated list of browser origins the gateway accepts. Override via deploy/compose/.env.
+  GATEWAY__CORS_ORIGINS: ${GATEWAY__CORS_ORIGINS:-http://localhost:5173,http://localhost:4173}
+  # Absolute base URL the stream HTTP server advertises in generated HLS URLs.
+  # Must be reachable from every client (phone, LAN peer, tailnet peer) — not just the Docker host.
+  STREAM__PUBLIC_BASE_URL: ${STREAM__PUBLIC_BASE_URL:-}
+
+x-library-volume: &library_volume
+  type: bind
+  source: ${HOST_MUSIC_PATH:-C:/Users/Daniel/Music}
+  target: /library
+  read_only: true
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: music-postgres
+    environment:
+      POSTGRES_USER: music
+      POSTGRES_PASSWORD: music
+      POSTGRES_DB: music
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U music -d music"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: music-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: music-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  migrate:
+    image: postgres:17-alpine
+    container_name: music-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../../migrations/postgres:/migrations:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        set -eu;
+        until pg_isready -h postgres -U music -d music; do
+          echo "waiting for postgres";
+          sleep 1;
+        done;
+        if psql "postgresql://music:music@postgres:5432/music" -tAc "SELECT to_regclass('public.setup_state') IS NOT NULL" | grep -q t; then
+          echo "schema already initialized; skipping bootstrap migrations";
+          exit 0;
+        fi;
+        for f in /migrations/*.sql; do
+          echo "applying $$f";
+          psql "postgresql://music:music@postgres:5432/music" -v ON_ERROR_STOP=1 -f "$$f";
+        done;
+        echo "migrations complete";
+    restart: "no"
+
+  backend:
+    profiles: ["combined"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-backend
+    command: ["music-server"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment: *rust_env
+    ports:
+      - "8080:8080"
+      - "6054:6054"
+    volumes:
+      - music-data:/app/data/music
+      - ../../:/host_music:ro
+      - *library_volume
+    restart: unless-stopped
+
+  gateway:
+    profiles: ["micro"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-gateway
+    command: ["music-gateway"]
+    depends_on:
+      auth:
+        condition: service_started
+      catalog:
+        condition: service_started
+      storage:
+        condition: service_started
+      stream:
+        condition: service_started
+      ingestion:
+        condition: service_started
+      playlist:
+        condition: service_started
+      transcoding:
+        condition: service_started
+    environment:
+      <<: *rust_env
+      AUTH_GRPC_ADDR: http://auth:5051
+      CATALOG_GRPC_ADDR: http://catalog:5052
+      STORAGE_GRPC_ADDR: http://storage:5053
+      STREAM_GRPC_ADDR: http://stream:5054
+      STREAM_HTTP_ADDR: http://stream:6054
+      INGESTION_GRPC_ADDR: http://ingestion:5062
+      PLAYLIST_GRPC_ADDR: http://playlist:5057
+      TRANSCODING_GRPC_ADDR: http://transcoding:5061
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  auth:
+    profiles: ["micro"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-auth
+    command: ["music-auth"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment: *rust_env
+    restart: unless-stopped
+
+  catalog:
+    profiles: ["micro"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-catalog
+    command: ["music-catalog"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment: *rust_env
+    restart: unless-stopped
+
+  storage:
+    profiles: ["micro"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-storage
+    command: ["music-storage"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment: *rust_env
+    volumes:
+      - music-data:/app/data/music
+    restart: unless-stopped
+
+  stream:
+    profiles: ["micro"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-stream
+    command: ["music-stream"]
+    depends_on:
+      storage:
+        condition: service_started
+    environment: *rust_env
+    volumes:
+      - music-data:/app/data/music
+    ports:
+      - "6054:6054"
+    restart: unless-stopped
+
+  playlist:
+    profiles: ["micro"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-playlist
+    command: ["music-playlist"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment: *rust_env
+    restart: unless-stopped
+
+  transcoding:
+    profiles: ["micro"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-transcoding
+    command: ["music-transcoding"]
+    depends_on:
+      storage:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *rust_env
+      STORAGE_GRPC_ADDR: http://storage:5053
+    volumes:
+      - music-data:/app/data/music
+    restart: unless-stopped
+
+  ingestion:
+    profiles: ["micro"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-ingestion
+    command: ["music-ingestion"]
+    depends_on:
+      storage:
+        condition: service_started
+      catalog:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *rust_env
+      STORAGE_GRPC_ADDR: http://storage:5053
+      CATALOG_GRPC_ADDR: http://catalog:5052
+    volumes:
+      - *library_volume
+    restart: unless-stopped
+
+  analytics:
+    profiles: ["extras"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-analytics
+    command: ["music-analytics"]
+    environment: *rust_env
+    depends_on:
+      backend:
+        condition: service_started
+    restart: "no"
+
+  downloads:
+    profiles: ["extras"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-downloads
+    command: ["music-downloads"]
+    environment: *rust_env
+    depends_on:
+      backend:
+        condition: service_started
+    restart: "no"
+
+  search:
+    profiles: ["extras"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-search
+    command: ["music-search"]
+    environment: *rust_env
+    depends_on:
+      backend:
+        condition: service_started
+    restart: "no"
+
+  discovery:
+    profiles: ["extras"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-discovery
+    command: ["music-discovery"]
+    environment: *rust_env
+    depends_on:
+      backend:
+        condition: service_started
+    restart: "no"
+
+  recommend:
+    profiles: ["extras"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-recommend
+    command: ["music-recommend"]
+    environment: *rust_env
+    depends_on:
+      backend:
+        condition: service_started
+    restart: "no"
+
+  heartbeat:
+    profiles: ["extras"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-heartbeat
+    command: ["music-heartbeat"]
+    environment: *rust_env
+    depends_on:
+      backend:
+        condition: service_started
+    restart: "no"
+
+  notification:
+    profiles: ["extras"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-notification
+    command: ["music-notification"]
+    environment: *rust_env
+    depends_on:
+      backend:
+        condition: service_started
+    restart: "no"
+
+  sync:
+    profiles: ["extras"]
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.rust-services
+    image: music-rust-services:local
+    container_name: music-sync
+    command: ["music-sync"]
+    environment: *rust_env
+    depends_on:
+      backend:
+        condition: service_started
+    restart: "no"
+
+volumes:
+  pgdata:
+  music-data:

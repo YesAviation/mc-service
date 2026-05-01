@@ -1,0 +1,3 @@
+## Kanban
+
+Kanban is a visual workflow management method that helps teams visualize their work, limit work in progress, and optimize efficiency. It originated from the manufacturing industry but has been widely adopted in software development and other fields. Users who wish to follow along about the development of the project can visit [https://trello.com/b/ek5WoM0H/music](https://trello.com/b/ek5WoM0H/music) for more information. Additionally, this file will also be used to communicate the status of the project, what I am currently working on and what I plan to work on. 

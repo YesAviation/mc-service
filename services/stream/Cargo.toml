@@ -1,0 +1,27 @@
+[package]
+name = "music-stream"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+music-common = { workspace = true }
+music-proto = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+redis = { workspace = true }
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"

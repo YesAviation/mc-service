@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package storage.v1;
+
+import "common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service StorageService {
+  rpc StoreFile(stream StoreFileRequest) returns (StoreFileResponse);
+  rpc GetFileInfo(GetFileInfoRequest) returns (FileInfo);
+  rpc GetSignedUrl(GetSignedUrlRequest) returns (SignedUrlResponse);
+  rpc DeleteFile(DeleteFileRequest) returns (common.v1.Empty);
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+}
+
+message StoreFileRequest {
+  oneof data {
+    FileMetadata metadata = 1;
+    bytes chunk = 2;
+  }
+}
+
+message FileMetadata {
+  string original_filename = 1;
+  string content_type = 2;
+  string storage_backend = 3;
+}
+
+message StoreFileResponse {
+  string file_id = 1;
+  string storage_path = 2;
+  int64 size_bytes = 3;
+  string checksum = 4;
+}
+
+message GetFileInfoRequest {
+  string file_id = 1;
+}
+
+message FileInfo {
+  string id = 1;
+  string original_filename = 2;
+  string content_type = 3;
+  int64 size_bytes = 4;
+  string storage_backend = 5;
+  string storage_path = 6;
+  string checksum = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message GetSignedUrlRequest {
+  string file_id = 1;
+  int64 expires_in_secs = 2;
+  SignedUrlPurpose purpose = 3;
+}
+
+enum SignedUrlPurpose {
+  SIGNED_URL_PURPOSE_UNSPECIFIED = 0;
+  SIGNED_URL_PURPOSE_STREAM = 1;
+  SIGNED_URL_PURPOSE_DOWNLOAD = 2;
+}
+
+message SignedUrlResponse {
+  string url = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+message DeleteFileRequest {
+  string file_id = 1;
+}
+
+message ListFilesRequest {
+  common.v1.PaginationRequest pagination = 1;
+  optional string storage_backend = 2;
+}
+
+message ListFilesResponse {
+  repeated FileInfo files = 1;
+  common.v1.PaginationResponse pagination = 2;
+}

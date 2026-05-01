@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package sync.v1;
+
+import "common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service SyncService {
+  rpc Reconcile(ReconcileRequest) returns (ReconcileResponse);
+  rpc GetSyncStatus(GetSyncStatusRequest) returns (SyncStatusResponse);
+  rpc TriggerSync(TriggerSyncRequest) returns (TriggerSyncResponse);
+}
+
+message ReconcileRequest {
+  string scope = 1;
+  bool dry_run = 2;
+}
+
+message ReconcileResponse {
+  int32 orphaned_files = 1;
+  int32 missing_catalog_entries = 2;
+  int32 inconsistencies_found = 3;
+  int32 auto_fixed = 4;
+  repeated SyncIssue issues = 5;
+}
+
+message SyncIssue {
+  string issue_type = 1;
+  string resource_id = 2;
+  string description = 3;
+  bool auto_fixable = 4;
+}
+
+message GetSyncStatusRequest {}
+
+message SyncStatusResponse {
+  string status = 1;
+  google.protobuf.Timestamp last_sync = 2;
+  int32 pending_issues = 3;
+}
+
+message TriggerSyncRequest {
+  string scope = 1;
+  bool force = 2;
+}
+
+message TriggerSyncResponse {
+  string sync_id = 1;
+  string status = 2;
+}

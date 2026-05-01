@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package transcoding.v1;
+
+import "common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service TranscodingService {
+  rpc TranscodeTrack(TranscodeRequest) returns (TranscodeResponse);
+  rpc GenerateHls(HlsRequest) returns (HlsResponse);
+  rpc GetJobStatus(GetJobStatusRequest) returns (JobStatusResponse);
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
+  rpc CancelJob(CancelJobRequest) returns (common.v1.Empty);
+}
+
+message TranscodeRequest {
+  string track_id = 1;
+  string source_file_id = 2;
+  string target_format = 3;
+  int32 target_bitrate = 4;
+}
+
+message TranscodeResponse {
+  string job_id = 1;
+  string status = 2;
+}
+
+message HlsRequest {
+  string track_id = 1;
+  string source_file_id = 2;
+  repeated int32 bitrates = 3;
+  int32 segment_duration = 4;
+}
+
+message HlsResponse {
+  string job_id = 1;
+  string status = 2;
+}
+
+message GetJobStatusRequest {
+  string job_id = 1;
+}
+
+message JobStatusResponse {
+  string job_id = 1;
+  string track_id = 2;
+  string status = 3;
+  float progress = 4;
+  string output_path = 5;
+  string error_message = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp completed_at = 8;
+}
+
+message ListJobsRequest {
+  common.v1.PaginationRequest pagination = 1;
+  optional string status_filter = 2;
+}
+
+message ListJobsResponse {
+  repeated JobStatusResponse jobs = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message CancelJobRequest {
+  string job_id = 1;
+}

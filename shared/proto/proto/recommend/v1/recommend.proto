@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package recommend.v1;
+
+import "common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service RecommendService {
+  rpc GetRecommendations(GetRecommendationsRequest) returns (RecommendationsResponse);
+  rpc TrainModel(TrainModelRequest) returns (TrainModelResponse);
+  rpc GetModelStatus(GetModelStatusRequest) returns (ModelStatusResponse);
+}
+
+message GetRecommendationsRequest {
+  string user_id = 1;
+  int32 limit = 2;
+  RecommendationEngine engine = 3;
+}
+
+enum RecommendationEngine {
+  RECOMMENDATION_ENGINE_UNSPECIFIED = 0;
+  RECOMMENDATION_ENGINE_COLLABORATIVE = 1;
+  RECOMMENDATION_ENGINE_CONTENT_BASED = 2;
+  RECOMMENDATION_ENGINE_ML = 3;
+  RECOMMENDATION_ENGINE_HYBRID = 4;
+}
+
+message RecommendationsResponse {
+  repeated Recommendation recommendations = 1;
+  string engine_used = 2;
+}
+
+message Recommendation {
+  string track_id = 1;
+  float score = 2;
+  string reason = 3;
+}
+
+message TrainModelRequest {
+  RecommendationEngine engine = 1;
+  bool force_retrain = 2;
+}
+
+message TrainModelResponse {
+  string job_id = 1;
+  string status = 2;
+}
+
+message GetModelStatusRequest {
+  RecommendationEngine engine = 1;
+}
+
+message ModelStatusResponse {
+  string engine = 1;
+  string status = 2;
+  google.protobuf.Timestamp last_trained = 3;
+  int64 training_samples = 4;
+  float accuracy = 5;
+}

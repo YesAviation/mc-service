@@ -1,0 +1,103 @@
+# Default configuration. These values are safe to ship as-is; required secrets
+# are intentionally left unset and must be provided via environment variables
+# (see .env.example). The startup validator in shared/common/src/config.rs will
+# refuse to boot if JWT__SECRET or DATABASE__URL still contain defaults.
+
+[database]
+# Override via DATABASE__URL (e.g. postgres://user:pass@host:5432/music)
+url = "postgres://REQUIRED:REQUIRED@localhost:5432/music"
+sqlite_path = "./data/music.db"
+max_connections = 10
+min_connections = 2
+
+[redis]
+url = "redis://localhost:6379"
+
+[rabbitmq]
+url = "amqp://guest:guest@localhost:5672"
+
+[jwt]
+# MUST be overridden via JWT__SECRET (min 32 bytes, random).
+secret = "change-me-in-production"
+access_ttl_secs = 604800
+refresh_ttl_secs = 604800
+remember_me_ttl_secs = 2592000
+
+[stream]
+signed_url_ttl_secs = 604800
+# Leave unset on a single-machine setup to fall back to http://localhost:<port>.
+# Set via STREAM__PUBLIC_BASE_URL when deployed behind a proxy or on a LAN.
+# public_base_url = "https://music.example.com"
+
+[storage]
+backend = "local"
+local_path = "./data/music"
+
+[storage.s3]
+endpoint = "http://localhost:3900"
+access_key = ""
+secret_key = ""
+bucket = "music"
+region = "us-west-1"
+
+[gateway]
+port = 8080
+rate_limit_requests = 100
+rate_limit_window_secs = 60
+# Explicit list of browser origins that may call the API. Wildcards are
+# rejected. Leave empty to disable cross-origin access entirely.
+cors_origins = ["http://localhost:5173", "http://localhost:4173"]
+
+[services.auth]
+grpc_port = 5051
+
+[services.catalog]
+grpc_port = 5052
+
+[services.storage]
+grpc_port = 5053
+
+[services.stream]
+grpc_port = 5054
+
+[services.downloads]
+grpc_port = 5055
+
+[services.search]
+grpc_port = 5056
+
+[services.playlist]
+grpc_port = 5057
+
+[services.analytics]
+grpc_port = 5058
+
+[services.discovery]
+grpc_port = 5059
+
+[services.recommend]
+grpc_port = 5060
+
+[services.transcoding]
+grpc_port = 5061
+
+[services.ingestion]
+grpc_port = 5062
+
+[services.heartbeat]
+grpc_port = 5063
+
+[services.notification]
+grpc_port = 5064
+
+[services.sync]
+grpc_port = 5065
+
+[logging]
+level = "info"
+format = "pretty"
+
+[transcoding]
+ffmpeg_path = "ffmpeg"
+hls_segment_duration = 10
+bitrates = [128, 256, 320]

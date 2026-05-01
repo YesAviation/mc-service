@@ -1,0 +1,23 @@
+[package]
+name = "music-auth"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+music-common = { workspace = true }
+music-proto = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+argon2 = { workspace = true }
+jsonwebtoken = { workspace = true }

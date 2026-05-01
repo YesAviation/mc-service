@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package ingestion.v1;
+
+import "common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service IngestionService {
+  // Scan a directory and immediately spawn a background ingest job.
+  // Returns scan_id right away; clients poll GetScanProgress for live counts.
+  rpc ScanDirectory(ScanRequest) returns (ScanResponse);
+  rpc IngestFile(IngestFileRequest) returns (IngestResponse);
+  // Synchronous bulk-ingest of a previously-scanned set of paths. Mostly kept
+  // for scripted use; the admin UI uses ScanDirectory's auto-spawn instead.
+  rpc IngestScan(IngestScanRequest) returns (IngestScanResponse);
+  rpc GetScanProgress(GetScanProgressRequest) returns (ScanProgressResponse);
+  rpc GetScanStatus(GetScanStatusRequest) returns (ScanStatusResponse);
+  rpc ListScans(ListScansRequest) returns (ListScansResponse);
+}
+
+message ScanRequest {
+  string directory_path = 1;
+  bool recursive = 2;
+}
+
+message ScanResponse {
+  string scan_id = 1;
+  string status = 2;
+  int32 files_found = 3;
+}
+
+message IngestFileRequest {
+  string file_path = 1;
+  bool force_reimport = 2;
+}
+
+message IngestResponse {
+  string track_id = 1;
+  string status = 2;
+  bool is_duplicate = 3;
+  IngestedMetadata metadata = 4;
+}
+
+message IngestedMetadata {
+  string title = 1;
+  string artist = 2;
+  string album = 3;
+  int32 track_number = 4;
+  int32 disc_number = 5;
+  string genre = 6;
+  int32 year = 7;
+  int32 duration_secs = 8;
+  string format = 9;
+  int32 bitrate = 10;
+  int32 sample_rate = 11;
+}
+
+message IngestScanRequest {
+  string scan_id = 1;
+  // When true, re-import files even if a track with the same content hash
+  // already exists. Defaults to false (skip duplicates).
+  bool force_reimport = 2;
+}
+
+message IngestScanResponse {
+  string scan_id = 1;
+  int32 total = 2;
+  int32 imported = 3;
+  int32 duplicates = 4;
+  int32 failed = 5;
+  // Up to the first N file paths that failed, with their error messages.
+  // Empty when everything succeeded.
+  repeated IngestScanError errors = 6;
+}
+
+message IngestScanError {
+  string file_path = 1;
+  string error = 2;
+}
+
+message GetScanProgressRequest {
+  string scan_id = 1;
+}
+
+message ScanProgressResponse {
+  string scan_id = 1;
+  string directory_path = 2;
+  // pending | running | completed | failed
+  string status = 3;
+  int32 total = 4;
+  int32 processed = 5;
+  int32 imported = 6;
+  int32 duplicates = 7;
+  int32 failed = 8;
+  repeated IngestScanError errors = 9;
+  google.protobuf.Timestamp started_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  google.protobuf.Timestamp completed_at = 12;
+}
+
+message GetScanStatusRequest {
+  string scan_id = 1;
+}
+
+message ScanStatusResponse {
+  string scan_id = 1;
+  string status = 2;
+  int32 total_files = 3;
+  int32 processed_files = 4;
+  int32 skipped_files = 5;
+  int32 failed_files = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp completed_at = 8;
+}
+
+message ListScansRequest {
+  common.v1.PaginationRequest pagination = 1;
+}
+
+message ListScansResponse {
+  repeated ScanStatusResponse scans = 1;
+  common.v1.PaginationResponse pagination = 2;
+}

@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package heartbeat.v1;
+
+import "common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service HeartbeatService {
+  rpc Ping(PingRequest) returns (PingResponse);
+  rpc GetServiceStatus(GetServiceStatusRequest) returns (ServiceStatusResponse);
+  rpc GetAllServicesStatus(common.v1.Empty) returns (AllServicesStatusResponse);
+}
+
+message PingRequest {
+  string service_name = 1;
+}
+
+message PingResponse {
+  string service_name = 1;
+  string status = 2;
+  google.protobuf.Timestamp timestamp = 3;
+}
+
+message GetServiceStatusRequest {
+  string service_name = 1;
+}
+
+message ServiceStatusResponse {
+  string service_name = 1;
+  string status = 2;
+  string version = 3;
+  int64 uptime_secs = 4;
+  google.protobuf.Timestamp last_check = 5;
+}
+
+message AllServicesStatusResponse {
+  repeated ServiceStatusResponse services = 1;
+  bool all_healthy = 2;
+}

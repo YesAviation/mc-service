@@ -1,0 +1,38 @@
+FROM rust:1.88-bookworm AS builder
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends protobuf-compiler libprotobuf-dev pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY . .
+
+RUN cargo build --release \
+    -p music-server \
+    -p music-analytics \
+    -p music-downloads \
+    -p music-search \
+    -p music-playlist \
+    -p music-discovery \
+    -p music-recommend \
+    -p music-heartbeat \
+    -p music-notification \
+    -p music-sync
+
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /app/configs ./configs
+COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /app/target/release/music-* /usr/local/bin/
+
+RUN mkdir -p /app/data/music /host_music
+
+ENV RUST_LOG=info
+
+CMD ["music-server"]

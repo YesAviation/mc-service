@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package search.v1;
+
+import "common/v1/common.proto";
+
+service SearchService {
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc Suggest(SuggestRequest) returns (SuggestResponse);
+  rpc IndexTrack(IndexTrackRequest) returns (common.v1.Empty);
+  rpc RemoveTrack(RemoveTrackRequest) returns (common.v1.Empty);
+}
+
+message SearchRequest {
+  string query = 1;
+  common.v1.PaginationRequest pagination = 2;
+  optional string filter_type = 3;
+  optional string filter_genre = 4;
+}
+
+message SearchResponse {
+  repeated SearchResult results = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message SearchResult {
+  string id = 1;
+  string result_type = 2;
+  string title = 3;
+  string artist = 4;
+  string album = 5;
+  float score = 6;
+}
+
+message SuggestRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+
+message SuggestResponse {
+  repeated string suggestions = 1;
+}
+
+message IndexTrackRequest {
+  string track_id = 1;
+  string title = 2;
+  string artist_name = 3;
+  string album_title = 4;
+  string genre = 5;
+}
+
+message RemoveTrackRequest {
+  string track_id = 1;
+}
